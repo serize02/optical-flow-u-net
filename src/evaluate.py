@@ -4,67 +4,54 @@ import matplotlib.pyplot as plt
 from dataset import get_dataloaders
 from model import UNet
 
-def visualize_predictions(model, dataloader, device, num_samples=1, threshold=0.5):
+def visualize_predictions(model, dataloader, device, threshold=0.5):
     model.eval()
-    images, masks = next(iter(dataloader))
-    images, masks = images.to(device), masks.to(device)
     
+    dataset = dataloader.dataset
+    random_idx = np.random.randint(0, len(dataset))
+    image, mask = dataset[random_idx]
+    
+    image_tensor = image.unsqueeze(0).to(device)
     with torch.no_grad():
-        preds = model(images)
-        preds_bin = (preds > threshold).float()
+        pred = model(image_tensor)
+        pred_bin = (pred > threshold).float()
     
-    images_np = images.cpu().numpy().squeeze()
-    masks_np = masks.cpu().numpy().squeeze()
-    preds_bin_np = preds_bin.cpu().numpy().squeeze()
+    image_np = image.numpy().squeeze().astype(np.float32)
+    mask_np = mask.numpy().squeeze().astype(np.uint8)
+    pred_np = pred_bin.cpu().numpy().squeeze().astype(np.uint8)
     
-    plt.figure(figsize=(20, 5 * num_samples))
+    dice = 2 * (mask_np * pred_np).sum() / (mask_np.sum() + pred_np.sum() + 1e-5)
+    iou = (mask_np * pred_np).sum() / (mask_np.sum() + pred_np.sum() - (mask_np * pred_np).sum() + 1e-5)
     
-    for i in range(num_samples):
-        dice = 2 * (masks_np[i] * preds_bin_np[i]).sum() / (masks_np[i].sum() + preds_bin_np[i].sum() + 1e-5)
-        iou = (masks_np[i] * preds_bin_np[i]).sum() / (masks_np[i].sum() + preds_bin_np[i].sum() - (masks_np[i] * preds_bin_np[i]).sum() + 1e-5)
+    plt.figure(figsize=(20, 5))
     
-        plt.subplot(num_samples, 4, (i*4)+1)
-        plt.imshow(images_np[i], cmap='gray')
-        plt.title(f'Original Image\nShape: {images_np[i].shape}')
-        plt.axis('off')
-        
-        plt.subplot(num_samples, 4, (i*4)+2)
-        plt.imshow(images_np[i], cmap='gray')
-        plt.imshow(np.ma.masked_where(masks_np[i] == 0, masks_np[i]), 
-                   cmap='Reds', 
-                   alpha=0.5, 
-                   vmin=0, 
-                   vmax=1)
-        plt.title('Ground Truth Mask (Red)')
-        plt.axis('off')
-        
-        plt.subplot(num_samples, 4, (i*4)+3)
-        plt.imshow(images_np[i], cmap='gray')
-        plt.imshow(np.ma.masked_where(preds_bin_np[i] == 0, preds_bin_np[i]), 
-                   cmap='Blues', 
-                   alpha=0.5, 
-                   vmin=0, 
-                   vmax=1)
-        plt.title('Predicted Mask (Blue)')
-        plt.axis('off')
-        
-        plt.subplot(num_samples, 4, (i*4)+4)
-        plt.imshow(images_np[i], cmap='gray')
-        plt.imshow(np.ma.masked_where(masks_np[i] == 0, masks_np[i]), 
-                   cmap='Reds', 
-                   alpha=0.3, 
-                   vmin=0, 
-                   vmax=1)
-        plt.imshow(np.ma.masked_where(preds_bin_np[i] == 0, preds_bin_np[i]), 
-                   cmap='Blues', 
-                   alpha=0.3, 
-                   vmin=0, 
-                   vmax=1)
-        plt.title(f'Combined Masks\nDice: {dice:.2f}, IoU: {iou:.2f}')
-        plt.axis('off')
+    plt.subplot(1, 4, 1)
+    plt.imshow(image_np, cmap='gray')
+    plt.title('Imagen Original\nShape: {}'.format(image_np.shape))
+    plt.axis('off')
+    
+    plt.subplot(1, 4, 2)
+    plt.imshow(image_np, cmap='gray')
+    plt.imshow(mask_np, alpha=0.5, cmap='Reds')
+    plt.title('Máscara Real (Rojo)')
+    plt.axis('off')
+    
+    plt.subplot(1, 4, 3)
+    plt.imshow(image_np, cmap='gray')
+    plt.imshow(pred_np, alpha=0.5, cmap='Blues')
+    plt.title('Predicción Modelo (Azul)')
+    plt.axis('off')
+    
+    plt.subplot(1, 4, 4)
+    plt.imshow(image_np, cmap='gray')
+    plt.imshow(mask_np, alpha=0.3, cmap='Reds')
+    plt.imshow(pred_np, alpha=0.3, cmap='Blues')
+    plt.title(f'Superposición\nDice: {dice:.2f}, IoU: {iou:.2f}')
+    plt.axis('off')
     
     plt.tight_layout()
     plt.show()
+
 
 def evaluate_model(model, dataloader, device):
     model.eval()
@@ -92,7 +79,7 @@ if __name__ == '__main__':
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    dice_test = evaluate_model(model, test_loader, device)
-    print(f"Dice Score en test: {dice_test:.4f}")
+    # dice_test = evaluate_model(model, test_loader, device)
+    # print(f"Dice Score en test: {dice_test:.4f}")
 
     visualize_predictions(model, test_loader, device)
