@@ -41,5 +41,6 @@ def train():
             best_val_loss = val_loss
             torch.save(model.state_dict(), os.path.join(MODEL_SAVE_DIR, "best_unet.pth"))
 
+
 if __name__ == "__main__":
     train()
