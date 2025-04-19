@@ -1,8 +1,12 @@
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
+
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from dataset import get_dataloaders
 from model import UNet
+
 
 def visualize_predictions(model, dataloader, device, threshold=0.5):
     model.eval()
@@ -12,6 +16,7 @@ def visualize_predictions(model, dataloader, device, threshold=0.5):
     image, mask = dataset[random_idx]
     
     image_tensor = image.unsqueeze(0).to(device)
+
     with torch.no_grad():
         pred = model(image_tensor)
         pred_bin = (pred > threshold).float()
@@ -48,9 +53,10 @@ def visualize_predictions(model, dataloader, device, threshold=0.5):
     plt.imshow(pred_np, alpha=0.3, cmap='Blues')
     plt.title(f'Superposición\nDice: {dice:.2f}, IoU: {iou:.2f}')
     plt.axis('off')
-    
+
     plt.tight_layout()
     plt.show()
+
 
 
 def evaluate_model(model, dataloader, device):
@@ -83,3 +89,4 @@ if __name__ == '__main__':
     # print(f"Dice Score en test: {dice_test:.4f}")
 
     visualize_predictions(model, test_loader, device)
+
